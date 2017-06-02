@@ -1,34 +1,32 @@
 
-<div>
-    <br/>
-    <H4 style="margin:5px">Address:<br/>{{xmr_address}}</H4>
-    <br/>
+<div class="row">
 
+	<h2 class="no-padding">Address: <span class="label">{{xmr_address}}</span></h2>
     {{#testnet}}
-        <H4 style="margin:5px">Testnet address: Yes</H4>
+	<h2 class="no-padding">Testnet Address: <span class="label">Yes</span></h2>
     {{/testnet}}
     {{^testnet}}
-        <H4 style="margin:5px">Testnet address: No</H4>
+	<h2 class="no-padding">Testnet Address: <span class="label">Yes</span></h2>
     {{/testnet}}
 
-    <br/>
-    <H4 style="margin:5px">Associated public keys</H4>
 
-    <H4 style="margin:5px">View key: {{public_viewkey}}</H4>
-    <H4 style="margin:5px">Spend key: {{public_spendkey}}</H4>
-    <br/>
+<div class="card" style="margin-top:10px">
+	<header><h3>Associated public keys</h3></header>
+	<footer>
+		<p>View key: {{public_viewkey}}</p>
+    		<p>Spend key: {{public_spendkey}}</p>
+	</footer>
+</div>
 
     {{#is_integrated_addr}}
-        <H4 style="margin:5px">Payment id: {{encrypted_payment_id}}</H4>
+	 <h2 class="no-padding">Payment ID: <span class="label">{{encrypted_payment_id}}</span></h2>
     {{/is_integrated_addr}}
 
 
-    <H4 style="margin:5px">
-        Transactions:<br/> Sorry, its not possible to find txs associated with
-        normal addresses in Monero
-    </H4>
-
-    <br/>
+    <h3>
+        Transactions:<br/>
+	Sorry, its not possible to find txs associated with normal addresses in Monero
+    </h3>
 
 </div>
 <br/>

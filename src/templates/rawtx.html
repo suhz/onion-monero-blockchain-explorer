@@ -1,24 +1,21 @@
-<div>
 
-    <div class="center">
-        <br/>
-        <h3 class="center">Transaction Pusher</h3>
-    </div>
+<div cass="row">
+    <header>
+        <h2>Transaction Pusher</h2>
+    </header>
 
+    <p>Paste base64 encoded, unsigned or signed transaction data here<br/>
+    (In Linux, can get base64 signed raw tx data: <i>base64 signed_monero_tx | xclip -selection clipboard</i>)<br/>
+    (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f signed_monero_tx encoded.txt & type "encoded.txt" | clip</i>)</p>
+    <div>
+        <form action="/checkandpush" method="post">
 
-    <div class="center">
-        <form action="/checkandpush" method="post" style="width:100%; margin-top:15px" class="style-1">
-            Paste base64 encoded, unsigned or signed transaction data here<br/>
-            (In Linux, can get base64 signed raw tx data: <i>base64 signed_monero_tx | xclip -selection clipboard</i>)<br/>
-            (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f signed_monero_tx encoded.txt & type "encoded.txt" | clip</i>)<br/>
-            <textarea name="rawtxdata" rows="20" cols="80"></textarea>
-            <br/>
-            Note: data is sent to the server, as the calculations are done on the server side
-            <br/>
-            <input type="submit" name="action" value="check">
-            &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp;
-            &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp;
-            <input type="submit" name="action" value="push">
+            <textarea name="rawtxdata" rows="10" cols="80"></textarea>
+
+            <p>Note: data is sent to the server, as the calculations are done on the server side</p>
+            <div class="flex four center four">
+                <input class="button" type="submit" name="action" value="check"> &nbsp; <input class="button" type="submit" name="action" value="push">
+            </div>
         </form>
     </div>
 

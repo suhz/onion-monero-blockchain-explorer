@@ -1,66 +1,116 @@
 
-<div class="center">
-     <h3 style="font-size: 12px; margin-top: 20px">
+<p><center>
+    Server time: {{server_timestamp}}  | <a href="/mempool">Memory pool</a>
+    {{#enable_pusher}}
+       | <a href="/rawtx">Tx pusher </a>
+    {{/enable_pusher}}
+    {{#enable_key_image_checker}}
+       | <a href="/rawkeyimgs">Key images checker</a>
+    {{/enable_key_image_checker}}
+    {{#enable_output_key_checker}}
+       | <a href="/rawoutputkeys">Output keys checker</a>
+    {{/enable_output_key_checker}}
+    {{#enable_autorefresh_option}}
+        |
+       {{#refresh}}
+           <a href="/">Autorefresh is ON (10 s)</a>
+       {{/refresh}}
+       {{^refresh}}
+          <a href="/autorefresh">Autorefresh is OFF</a>
+       {{/refresh}}
+    {{/enable_autorefresh_option}}
+    {{#testnet_url}}
+       | <a href="{{testnet_url}}">Go to testnet explorer</a>
+    {{/testnet_url}}
+    {{#mainnet_url}}
+       | <a href="{{mainnet_url}}">Go to mainnet explorer</a>
+    {{/mainnet_url}}
+    {{#testnet}}
+       | This is <span style="color:#ff6b62">testnet</span> blockchian
+    {{/testnet}}
+</center></p>
 
-        Server time: {{server_timestamp}}  | <a href="/mempool">Memory pool</a>
-         {{#enable_pusher}}
-            | <a href="/rawtx">Tx pusher </a>
-         {{/enable_pusher}}
-         {{#enable_key_image_checker}}
-            | <a href="/rawkeyimgs">Key images checker</a>
-         {{/enable_key_image_checker}}
-         {{#enable_output_key_checker}}
-            | <a href="/rawoutputkeys">Output keys checker</a>
-         {{/enable_output_key_checker}}
-         {{#enable_autorefresh_option}}
-             |
-            {{#refresh}}
-                <a href="/">Autorefresh is ON (10 s)</a>
-            {{/refresh}}
-            {{^refresh}}
-               <a href="/autorefresh">Autorefresh is OFF</a>
-            {{/refresh}}
-         {{/enable_autorefresh_option}}
-         {{#testnet_url}}
-            | <a href="{{testnet_url}}">Go to testnet explorer</a>
-         {{/testnet_url}}
-         {{#mainnet_url}}
-            | <a href="{{mainnet_url}}">Go to mainnet explorer</a>
-         {{/mainnet_url}}
-         {{#testnet}}
-            | This is <span style="color:#ff6b62">testnet</span> blockchian
-         {{/testnet}}
 
-        </h3>
+  {{#network_info}}
+
+<div class="flex five center network-info">
+    <div class="card">
+      <header>
+        <h3>Difficulty</h3>
+      </header>
+      <footer>
+        <h3>{{difficulty}}</h3>
+      </footer>
+    </div>
+
+    <div class="card">
+      <header>
+        <h3>Hash rate</h3>
+      </header>
+      <footer>
+        <h3>{{hash_rate}}</h3>
+      </footer>
+    </div>
+
+    <div class="card">
+      <header>
+        <h3>Fees per kb</h3>
+      </header>
+      <footer>
+        <h3>{{fee_per_kb}}</h3>
+      </footer>
+    </div>
+{{#emission}}
+    <div class="card">
+      <header>
+        <h3>Emission (fees)</h3>
+      </header>
+      <footer data-tooltip="as of {{blk_no}} block" class="tooltip-top">
+        <h3>{{amount}} <small>({{fee_amount}}) </small></h3>
+      </footer>
+    </div>
+{{/emission}}
+    <div class="card">
+      <header>
+        <h3 data-tooltip="Alternative blocks">Alt Blocks</h3>
+      </header>
+      <footer>
+        <h3>{{alt_blocks_no}}</h3>
+      </footer>
+    </div>
 </div>
+    {{/network_info}}
+
 
     {{{mempool_info}}}
 
-    {{#is_page_zero}}
-      <h2 style="margin-bottom: 0px">Transactions in the last {{no_of_last_blocks}} blocks</h2>
-    {{/is_page_zero}}
-    {{^is_page_zero}}
-      <h2 style="margin-bottom: 0px">Transactions in older blocks<!--(height: {{height}})--></h2>
-    {{/is_page_zero}}
+<div class="row">
+     <header>
+        {{#is_page_zero}}
+        <h2>Transactions in the last {{no_of_last_blocks}} blocks</h2>
+        {{/is_page_zero}}
+        {{^is_page_zero}}
+        <h2>Transactions in older blocks<!--(height: {{height}})--></h2>
+        <h2 style="margin-bottom: 0px"></h2>
+        {{/is_page_zero}}
 
-    <h4 style="font-size: 14px; margin-top: 0px">(Median size of these blocks: {{blk_size_median}} kB)</h4>
+        (Median size of these blocks: {{blk_size_median}} kB)
+     </header>
 
-
-
-    <div class="center">
-
-            <table class="center">
-                <tr>
-                    <td>height</td>
-                    <td>age {{age_format}}<!--(Δm)--></td>
-                    <td>size [kB]<!--(Δm)--></td>
-                    <td>tx hash</td>
-                    <td>fees</td>
-                    <td>outputs</td>
-                    <td>in(nonrct)/out</td>
-                    <td>mixin</td>
-                    <td>tx size [kB]</td>
-                </tr>
+    <table class="primary table">
+        <thead>
+            <tr>
+                <th>height</th>
+                <th>age [h:m:s]<!--(Δm)--></th>
+                <th>size [kB]<!--(Δm)--></th>
+                <th>tx hash</th>
+                <th>fees</th>
+                <th>outputs</th>
+                <th>in(nonrct)/out</th>
+                <th>ring size</th>
+                <th>tx size [kB]</th>
+            </tr>
+        </thead>
                 {{#txs}}
                 <tr>
                     <td><a href="/block/{{height}}">{{height}}</a></td>
@@ -84,8 +134,7 @@
                 current page: {{page_no}}/<a href="/page/{{total_page_no}}">{{total_page_no}}</a>
                 | <a href="/page/{{next_page}}">next page</a>
             </div>
-
-    </div>
+</div>
 
 {{#show_cache_times}}
     <div class="center">

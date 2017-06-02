@@ -1,19 +1,20 @@
-<h2 style="margin-bottom: 0px">
-   Memory pool
-</h2>
-<h4 style="font-size: 14px; margin-top: 0px">(no of txs: {{mempool_size}}, size: {{mempool_size_kB}} kB)</h4>
-<div class="center">
+    <div class="row">
+        <header>
+           <h2>Memory pool</h2>(no of txs: {{mempool_size}}, size: {{mempool_size_kB}} kB)
+       </header>
     
-      <table class="center" style="width:80%">
-            <tr>
-                <td>age [h:m:s]</td>
-                <td>transaction hash</td>
-                <td>fee</td>
-                <td>outputs</td>
-                <td>in(nonrct)/out</td>
-                <td>mixin</td>
-                <td>tx size [kB]</td>
-            </tr>
+	<table class="primary table">
+	    <thead>
+                <tr>
+                    <th>age [h:m:s]</th>
+                    <th>transaction hash</th>
+                    <th>fee</th>
+                    <th>outputs</th>
+                    <th>in(nonrct)/out</th>
+                    <th>ring size</th>
+                    <th>tx size [kB]</th>
+                </tr>
+            </thead>
             {{#mempooltxs}}
             <tr>
                 <td>{{age}}</td>
@@ -26,16 +27,15 @@
             </tr>
             {{/mempooltxs}}
         </table>
-
+    </div>
     {{^mempool_fits_on_front_page}}
       {{#partial_mempool_shown}}
-      <div class="center" style="text-align: center; margin-bottom: 10px">
+	<p><center>
           <a href="/mempool">Only {{no_of_mempool_tx_of_frontpage}} txs shown. Click here to see all of them</a>
-      </div>
+	</center></p>
       {{/partial_mempool_shown}}
 
     {{/mempool_fits_on_front_page}}
-
 
 
     {{#show_cache_times}}
@@ -48,6 +48,3 @@
             </h6>
         </div>
     {{/show_cache_times}}
-
-
-</div>

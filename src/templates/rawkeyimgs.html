@@ -1,26 +1,20 @@
-<div>
+<div class="row">
 
-    <div class="center">
-        <br/>
-        <h3 class="center">Signed Key Images Checker</h3>
-    </div>
+    <header>
+        <h2>Signed Key Images Checker</h2>
+    </header>
 
 
-    <div class="center">
-        <form action="/checkrawkeyimgs" method="post" style="width:100%; margin-top:15px" class="style-1">
-            Paste base64 encoded, signed key images data here<br/>
+        <form action="/checkrawkeyimgs" method="post">
+            <p><b>Paste base64 encoded, signed key images data here</b><br/>
             (In Linux, can get base64 signed raw tx data: <i>base64 your_key_images_file | xclip -selection clipboard</i>)<br/>
-            (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f your_key_images_file encoded.txt & type "encoded.txt" | clip</i>)<br/>
-            <textarea name="rawkeyimgsdata" rows="20" cols="80"></textarea><br/><br/>
-            Viewkey (<i>key image file data is encoded using your viewkey. Thus is needed for decryption</i>)
-            <br/>
-            Note: data and viewkey are sent to the server, as the calculations are done on the server side
-            <br/>
-            <input type="text"  name="viewkey" size="80">
-            <br/>
-            <input type="submit" name="action" value="check">
-        </form>
-    </div>
+            (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f your_key_images_file encoded.txt & type "encoded.txt" | clip</i>)</p>
 
+            <textarea name="rawkeyimgsdata" rows="10" cols="80"></textarea>
+            <p><b>Viewkey (<i>key image file data is encoded using your viewkey. Thus is needed for decryption</i>)</b>
+            <br />Note: data and viewkey are sent to the server, as the calculations are done on the server side</p>
+            <input type="text"  name="viewkey" size="80">
+            <input class="button" type="submit" name="action" value="check">
+        </form>
 
 </div>

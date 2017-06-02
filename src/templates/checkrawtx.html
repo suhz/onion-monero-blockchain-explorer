@@ -1,9 +1,8 @@
-<div>
+<div class="row">
 
-    <div class="center">
-        <br/>
-        <h3 class="center">Transaction checking</h3>
-    </div>
+    <header>
+        <h2>Transaction checking</h2>
+    </header>
 
     <div class="center">
 
@@ -21,7 +20,7 @@
             {{#txs}}
                 <div class="center" style="width: 100%; margin-top:10px">
                     <h4>Basic information</h4>
-                    <h5>
+                    <p>
                         {{#dest_infos}}
                             Send {{dest_amount}} to {{dest_address}}<br/>
                         {{/dest_infos}}
@@ -33,11 +32,11 @@
                         {{#has_payment_id8}}
                            Payment id (encrypted): {{payment_id8}}<br/>
                         {{/has_payment_id8}}
-                    </h5>
+                    </p>
 
                     <h3>
-                        Inputs' mixins time scale (from {{min_mix_time}} till {{max_mix_time}};
-                        resolution: {{timescales_scale}} days{{#have_raw_tx}}; R - real mixin {{/have_raw_tx}})
+			Inputs' ring size time scale (from {{min_mix_time}} till {{max_mix_time}};
+			resolution: {{timescales_scale}} days{{#have_raw_tx}}; R - real ring member {{/have_raw_tx}})
                     </h3>
                     <div class="center">
                         <ul class="center">
