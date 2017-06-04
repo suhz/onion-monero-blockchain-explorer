@@ -1,5 +1,6 @@
 
-<p><center>
+<p>
+    <center>
     Server time: {{server_timestamp}}  | <a href="/mempool">Memory pool</a>
     {{#enable_pusher}}
        | <a href="/rawtx">Tx pusher </a>
@@ -28,61 +29,75 @@
     {{#testnet}}
        | This is <span style="color:#ff6b62">testnet</span> blockchian
     {{/testnet}}
-</center></p>
+    </center>
+</p>
 
+{{#network_info}}
+    <div class="flex five center network-info">
+        <div class="card">
+            <header>
+                <h3>Difficulty</h3>
+            </header>
+            <footer>
+                <h3>{{difficulty}}</h3>
+            </footer>
+        </div>
 
-  {{#network_info}}
+        <div class="card">
+            <header>
+                <h3>Hash rate</h3>
+            </header>
+            <footer>
+                <h3>{{hash_rate}}</h3>
+            </footer>
+        </div>
 
-<div class="flex five center network-info">
-    <div class="card">
-      <header>
-        <h3>Difficulty</h3>
-      </header>
-      <footer>
-        <h3>{{difficulty}}</h3>
-      </footer>
+        <div class="card">
+            <header>
+                <h3>Fees per kb</h3>
+            </header>
+            <footer>
+                <h3>{{fee_per_kb}}</h3>
+            </footer>
+        </div>
+
+    {{#emission}}
+        <div class="card">
+            <header>
+                <h3>Emission (fees)</h3>
+            </header>
+            <footer data-tooltip="as of {{blk_no}} block" class="tooltip-top">
+                <h3>
+                    {{amount}} <small>({{fee_amount}}) </small>
+                </h3>
+            </footer>
+        </div>
+    {{/emission}}
+
+        <div class="card">
+          <header>
+            <h3 data-tooltip="Alternative blocks no">
+                Alt Blocks
+            </h3>
+          </header>
+          <footer>
+            <h3>{{alt_blocks_no}}</h3>
+          </footer>
+        </div>
     </div>
 
-    <div class="card">
-      <header>
-        <h3>Hash rate</h3>
-      </header>
-      <footer>
-        <h3>{{hash_rate}}</h3>
-      </footer>
-    </div>
+    {{^is_current_info}}
+        <center>
+            <small>
+                Data from {{age}} {{age_format}} ago
+            </small>
+        </center>
+    {{/is_current_info}}
 
-    <div class="card">
-      <header>
-        <h3>Fees per kb</h3>
-      </header>
-      <footer>
-        <h3>{{fee_per_kb}}</h3>
-      </footer>
-    </div>
-{{#emission}}
-    <div class="card">
-      <header>
-        <h3>Emission (fees)</h3>
-      </header>
-      <footer data-tooltip="as of {{blk_no}} block" class="tooltip-top">
-        <h3>{{amount}} <small>({{fee_amount}}) </small></h3>
-      </footer>
-    </div>
-{{/emission}}
-    <div class="card">
-      <header>
-        <h3 data-tooltip="Alternative blocks">Alt Blocks</h3>
-      </header>
-      <footer>
-        <h3>{{alt_blocks_no}}</h3>
-      </footer>
-    </div>
-</div>
-    {{/network_info}}
+{{/network_info}}
 
 
-    {{{mempool_info}}}
+{{{mempool_info}}}
 
 <div class="row">
      <header>
@@ -101,7 +116,7 @@
         <thead>
             <tr>
                 <th>height</th>
-                <th>age [h:m:s]<!--(Δm)--></th>
+                <th>age {{age_format}}<!--(Δm)--></th>
                 <th>size [kB]<!--(Δm)--></th>
                 <th>tx hash</th>
                 <th>fees</th>
@@ -135,6 +150,7 @@
                 | <a href="/page/{{next_page}}">next page</a>
             </div>
 </div>
+
 
 {{#show_cache_times}}
     <div class="center">

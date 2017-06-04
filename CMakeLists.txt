@@ -107,12 +107,12 @@ set(LIBRARIES
         common
         mnemonics
         epee
-        easylogging
         ${Boost_LIBRARIES}
         pthread
         unbound
         curl
         crypto
+        atomic
         ssl)
 
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT WIN32)
