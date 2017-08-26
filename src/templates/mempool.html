@@ -1,8 +1,8 @@
     <div class="row">
         <header>
-           <h2>Memory pool</h2>(no of txs: {{mempool_size}}, size: {{mempool_size_kB}} kB)
+           <h2>Transaction pool</h2>(no of txs: {{mempool_size}}, size: {{mempool_size_kB}} kB, updated every {{ mempool_refresh_time }} seconds))
        </header>
-    
+
 	<table class="primary table">
 	    <thead>
                 <tr>
@@ -31,20 +31,10 @@
     {{^mempool_fits_on_front_page}}
       {{#partial_mempool_shown}}
 	<p><center>
-          <a href="/mempool">Only {{no_of_mempool_tx_of_frontpage}} txs shown. Click here to see all of them</a>
+          <a href="/txpool">Only {{no_of_mempool_tx_of_frontpage}} txs shown. Click here to see all of them</a>
 	</center></p>
       {{/partial_mempool_shown}}
 
     {{/mempool_fits_on_front_page}}
 
-
-    {{#show_cache_times}}
-        <div class="center">
-            <h6 style="margin-top: 1px;color:#949490">
-                Mempoool tx details construction time: {{construction_time_total}} s
-                <br/>
-                includes {{construction_time_cached}} s from mempool cache ({{cache_hits}} hits)
-                and {{construction_time_non_cached}} s from non cache ({{cache_misses}} misses)
-            </h6>
-        </div>
-    {{/show_cache_times}}
+</div>

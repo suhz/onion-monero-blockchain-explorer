@@ -1,9 +1,9 @@
 
 <p>
     <center>
-    Server time: {{server_timestamp}}  | <a href="/mempool">Memory pool</a>
+    Server time: {{server_timestamp}}  | <a href="/txpool">Transaction pool</a>
     {{#enable_pusher}}
-       | <a href="/rawtx">Tx pusher </a>
+       | <a href="/rawtx">Transaction pusher </a>
     {{/enable_pusher}}
     {{#enable_key_image_checker}}
        | <a href="/rawkeyimgs">Key images checker</a>
@@ -76,12 +76,12 @@
 
         <div class="card">
           <header>
-            <h3 data-tooltip="Alternative blocks no">
-                Alt Blocks
+            <h3 data-tooltip="Median block size limit">
+                Median Blk
             </h3>
           </header>
           <footer>
-            <h3>{{alt_blocks_no}}</h3>
+            <h3>{{block_size_limit}} kB</h3>
           </footer>
         </div>
     </div>
