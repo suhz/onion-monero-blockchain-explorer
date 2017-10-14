@@ -26,26 +26,18 @@ Monero C++ libraries, but also demonstrates how to use:
 Tor users:
  
  - [http://dvwae436pd7nt4bc.onion](http://dvwae436pd7nt4bc.onion) (Front-end templates are [maintained by @suhz](https://github.com/suhz/onion-monero-blockchain-explorer/tree/moneroexplorer.com/src/templates)).
- - [http://libwh5lvouddzei4.onion/] - bleading edge version.
+ - [http://libwh5lvouddzei4.onion/](http://libwh5lvouddzei4.onion/) - bleeding edge version.
   
 Clearnet versions:
 
  - [http://139.162.32.245:8081/](http://139.162.32.245:8081/) - down for now.
  - [https://xmrchain.net/](https://xmrchain.net/) - https enabled, most popular and very stable.
- - [https://monerohash.com/explorer/](https://monerohash.com/explorer/) - nice looking one, https enabled.
- - [http://explore.MoneroWorld.com](http://explore.moneroworld.com) - same as the second one.
- - [https://MoneroExplorer.com/](https://moneroexplorer.com/) - nice looking one, https enabled.   
-
-  
-Clearnet versions:
-
- - [https://xmrchain.net/](https://xmrchain.net/) - https enabled, most popular and very stable.
- - [https://monerohash.com/explorer/](https://monerohash.com/explorer/) - nice looking one, https enabled.
- - [http://explore.MoneroWorld.com](http://explore.moneroworld.com) - same as the second one.
  - [https://MoneroExplorer.com/](https://moneroexplorer.com/) - nice looking one, https enabled.
+ - [https://monerohash.com/explorer/](https://monerohash.com/explorer/) - nice looking one, https enabled.
+ - [http://explore.MoneroWorld.com](http://explore.moneroworld.com) - same as the second one. 
+ - [https://moneroexplorer.pro/](https://moneroexplorer.pro/) - nice looking one, https enabled.
  - [https://explorer.monero-otc.com/](https://explorer.monero-otc.com/) - https enabled.
- - [http://monerochain.com/](http://monerochain.com/) - JSON API based, multiple nodes.
-
+ - [http://monerochain.com/](http://monerochain.com/) - JSON API based, multiple nodes.   
   
 Clearnet testnet Monero version:
 
@@ -89,7 +81,7 @@ The key features of the Onion Monero Blockchain Explorer are:
 
 ## Compilation on Ubuntu 16.04
 
-##### Compile latest Monero
+##### Compile latest Monero release v0.11
 
 Download and compile recent Monero into your home folder:
 
@@ -97,7 +89,7 @@ Download and compile recent Monero into your home folder:
 # first install monero dependecines
 sudo apt update
 
-sudo apt install git build-essential cmake libboost-all-dev miniupnpc libunbound-dev graphviz doxygen libunwind8-dev pkg-config libssl-dev libcurl4-openssl-dev libgtest-dev libreadline-dev
+sudo apt install git build-essential cmake libboost-all-dev miniupnpc libunbound-dev graphviz doxygen libunwind8-dev pkg-config libssl-dev libcurl4-openssl-dev libgtest-dev libreadline-dev libzmq3-dev
 
 # go to home folder 
 cd ~
@@ -106,10 +98,14 @@ git clone https://github.com/monero-project/monero
 
 cd monero/
 
+# checkout last monero version
+git checkout -b last_release v0.11.0.0
+
 make
 ```
 
 ##### Compile and run the explorer
+
 Once the Monero is compiles, the explorer can be downloaded and compiled
 as follows:
 
@@ -193,8 +189,6 @@ xmrblocks, Onion Monero Blockchain Explorer:
                                         page to mainnet explorer
   --no-blocks-on-index arg (=10)        number of last blocks to be shown on 
                                         index page
-  --network-info-timeout arg (=1000)    maximum time, in milliseconds, to wait 
-                                        for network info availability
   --mempool-info-timeout arg (=5000)    maximum time, in milliseconds, to wait 
                                         for mempool data for the front page
   --mempool-refresh-time arg (=5)       time, in seconds, for each refresh of 
@@ -213,10 +207,10 @@ Example usage, defined as bash aliases.
 
 ```bash
 # for mainnet explorer
-alias xmrblocksmainnet='~/onion-monero-blockchain-explorer/build/xmrblocks    --port 8081 --no-blocks-on-index 24 --testnet-url "http://139.162.32.245:8082" --enable-pusher --enable-emission-monitor'
+alias xmrblocksmainnet='~/onion-monero-blockchain-explorer/build/xmrblocks    --port 8081 --testnet-url "http://139.162.32.245:8082" --enable-pusher --enable-emission-monitor'
 
 # for testnet explorer
-alias xmrblockstestnet='~/onion-monero-blockchain-explorer/build/xmrblocks -t --port 8082 --no-blocks-on-index 24 --mainnet-url "http://139.162.32.245:8081" --enable-pusher --enable-emission-monitor'
+alias xmrblockstestnet='~/onion-monero-blockchain-explorer/build/xmrblocks -t --port 8082 --mainnet-url "http://139.162.32.245:8081" --enable-pusher --enable-emission-monitor'
 ```
 
 These are aliases similar to those used for http://139.162.32.245:8081/ and http://139.162.32.245:8082/, respectively.

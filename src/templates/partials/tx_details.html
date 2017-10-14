@@ -7,6 +7,7 @@
     <h2 class="no-padding">Tx public key: <span class="label">{{tx_pub_key}}</span></h2>
     {{#has_payment_id}}
         <h2 class="no-padding">Payment id: <span class="label">{{payment_id}}</span></h2>
+        <h2 class="no-padding">Payment id as ascii ([a-zA-Z0-9 /!]): <span class="label">{{payment_id_as_ascii}}</span></h2>
     {{/has_payment_id}}
     {{#has_payment_id8}}
         <h2 class="no-padding">Payment id (encrypted): <span class="label">{{payment_id8}}</span></h2>

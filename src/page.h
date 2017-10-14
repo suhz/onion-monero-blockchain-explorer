@@ -30,6 +30,7 @@
 #include <limits>
 #include <ctime>
 #include <future>
+#include <regex>
 
 #define TMPL_DIR                    "./templates"
 #define TMPL_PARIALS_DIR            TMPL_DIR "/partials"
@@ -139,6 +140,8 @@ namespace xmreg
 
         crypto::hash  payment_id  = null_hash; // normal
         crypto::hash8 payment_id8 = null_hash8; // encrypted
+
+        string payment_id_as_ascii;
 
         std::vector<std::vector<crypto::signature>> signatures;
 
@@ -810,7 +813,7 @@ namespace xmreg
             {
                 // get only first no_of_mempool_tx txs
                 mempool_txs = MempoolStatus::get_mempool_txs(no_of_mempool_tx);
-                no_of_mempool_tx = std::min(no_of_mempool_tx, mempool_txs.size());
+                no_of_mempool_tx = std::min<uint64_t>(no_of_mempool_tx, mempool_txs.size());
             }
 
             // total size of mempool in bytes
@@ -937,7 +940,7 @@ namespace xmreg
                 cerr << "rpc.get_alt_blocks(atl_blks_hashes) failed" << endl;
             }
 
-            context.emplace("no_alt_blocks", atl_blks_hashes.size());
+            context.emplace("no_alt_blocks", (uint64_t)atl_blks_hashes.size());
 
             for (const string& alt_blk_hash: atl_blks_hashes)
             {
@@ -1138,7 +1141,7 @@ namespace xmreg
 
             // add total fees in the block to the context
             context["sum_fees"]
-                    = xmreg::xmr_amount_to_str(sum_fees, "{:0.6f}");
+                    = xmreg::xmr_amount_to_str(sum_fees, "{:0.6f}", "0");
 
             // get xmr in the block reward
             context["blk_reward"]
@@ -1412,6 +1415,7 @@ namespace xmreg
                         string xmr_address_str,
                         string viewkey_str, /* or tx_prv_key_str when tx_prove == true */
                         string raw_tx_data,
+                        string domain,
                         bool tx_prove = false)
         {
 
@@ -1595,6 +1599,18 @@ namespace xmreg
             string pid_str   = pod_to_hex(txd.payment_id);
             string pid8_str  = pod_to_hex(txd.payment_id8);
 
+            string shortcut_url = domain
+                                  + (tx_prove ? "/prove" : "/myoutputs")
+                                  + "/" + tx_hash_str
+                                  + "/" + xmr_address_str
+                                  + "/" + viewkey_str;
+
+
+            string viewkey_str_partial = viewkey_str;
+
+            // dont show full private keys. Only file first and last letters
+            for (size_t i = 3; i < viewkey_str_partial.length() - 2; ++i)
+                viewkey_str_partial[i] = '*';
 
             // initalise page tempate map with basic info about blockchain
             mstch::map context {
@@ -1602,12 +1618,12 @@ namespace xmreg
                     {"tx_hash"              , tx_hash_str},
                     {"tx_prefix_hash"       , pod_to_hex(txd.prefix_hash)},
                     {"xmr_address"          , xmr_address_str},
-                    {"viewkey"              , viewkey_str},
+                    {"viewkey"              , viewkey_str_partial},
                     {"tx_pub_key"           , pod_to_hex(txd.pk)},
                     {"blk_height"           , tx_blk_height_str},
                     {"tx_size"              , fmt::format("{:0.4f}",
                                                           static_cast<double>(txd.size) / 1024.0)},
-                    {"tx_fee"               , xmreg::xmr_amount_to_str(txd.fee)},
+                    {"tx_fee"               , xmreg::xmr_amount_to_str(txd.fee, "{:0.12f}", true)},
                     {"blk_timestamp"        , blk_timestamp},
                     {"delta_time"           , age.first},
                     {"outputs_no"           , static_cast<uint64_t>(txd.output_pub_keys.size())},
@@ -1616,7 +1632,8 @@ namespace xmreg
                     {"payment_id"           , pid_str},
                     {"payment_id8"          , pid8_str},
                     {"decrypted_payment_id8", string{}},
-                    {"tx_prove"             , tx_prove}
+                    {"tx_prove"             , tx_prove},
+                    {"shortcut_url"         , shortcut_url}
             };
 
             string server_time_str = xmreg::timestamp_to_str_gm(server_timestamp, "%F");
@@ -2096,12 +2113,14 @@ namespace xmreg
         string
         show_prove(string tx_hash_str,
                    string xmr_address_str,
-                   string tx_prv_key_str)
+                   string tx_prv_key_str,
+                   string domain)
         {
             string raw_tx_data {""}; // not using it in prove tx. only for outputs
 
             return show_my_outputs(tx_hash_str, xmr_address_str,
-                                   tx_prv_key_str, raw_tx_data, true);
+                                   tx_prv_key_str, raw_tx_data,
+                                   domain, true);
         }
 
         string
@@ -2750,84 +2769,101 @@ namespace xmreg
         {
             clean_post_data(raw_tx_data);
 
-            string decoded_raw_tx_data = epee::string_encoding::base64_decode(raw_tx_data);
-
-            const size_t magiclen = strlen(SIGNED_TX_PREFIX);
-
-            string data_prefix = xmreg::make_printable(decoded_raw_tx_data.substr(0, magiclen));
-
             // initalize page template context map
             mstch::map context {
                     {"testnet"              , testnet},
                     {"have_raw_tx"          , true},
                     {"has_error"            , false},
                     {"error_msg"            , string {}},
-                    {"data_prefix"          , data_prefix},
             };
-            context.emplace("txs", mstch::array{});
 
             // add header and footer
             string full_page = template_file["pushrawtx"];
 
             add_css_style(context);
 
-            if (strncmp(decoded_raw_tx_data.c_str(), SIGNED_TX_PREFIX, magiclen) != 0)
+            std::vector<tools::wallet2::pending_tx> ptx_vector;
+
+            // first try reading raw_tx_data as a raw hex string
+            std::string tx_blob;
+            cryptonote::transaction parsed_tx;
+            crypto::hash parsed_tx_hash, parsed_tx_prefixt_hash;
+            if (epee::string_tools::parse_hexstr_to_binbuff(raw_tx_data, tx_blob) && parse_and_validate_tx_from_blob(tx_blob, parsed_tx, parsed_tx_hash, parsed_tx_prefixt_hash))
             {
-                string error_msg = fmt::format("The data does not appear to be signed raw tx! Data prefix: {:s}",
-                                               data_prefix);
+                ptx_vector.push_back({});
+                ptx_vector.back().tx = parsed_tx;
+            }
+            // if failed, treat raw_tx_data as base64 encoding of signed_monero_tx
+            else
+            {
+                string decoded_raw_tx_data = epee::string_encoding::base64_decode(raw_tx_data);
 
-                context["has_error"] = true;
-                context["error_msg"] = error_msg;
+                const size_t magiclen = strlen(SIGNED_TX_PREFIX);
 
-                return mstch::render(full_page, context);
+                string data_prefix = xmreg::make_printable(decoded_raw_tx_data.substr(0, magiclen));
+
+                context["data_prefix"] = data_prefix;
+
+                if (strncmp(decoded_raw_tx_data.c_str(), SIGNED_TX_PREFIX, magiclen) != 0)
+                {
+                    string error_msg = fmt::format("The data does not appear to be signed raw tx! Data prefix: {:s}",
+                                                   data_prefix);
+
+                    context["has_error"] = true;
+                    context["error_msg"] = error_msg;
+
+                    return mstch::render(full_page, context);
+                }
+
+                if (this->enable_pusher == false)
+                {
+                    string error_msg = fmt::format(
+                            "Pushing disabled!\n "
+                                    "Run explorer with --enable-pusher flag to enable it.");
+
+                    context["has_error"] = true;
+                    context["error_msg"] = error_msg;
+
+                    return mstch::render(full_page, context);
+                }
+
+                bool r {false};
+
+                string s = decoded_raw_tx_data.substr(magiclen);
+
+                ::tools::wallet2::signed_tx_set signed_txs;
+
+                try
+                {
+                    std::istringstream iss(s);
+                    boost::archive::portable_binary_iarchive ar(iss);
+                    ar >> signed_txs;
+
+                    r = true;
+                }
+                catch (...)
+                {
+                    cerr << "Failed to parse signed tx data " << endl;
+                }
+
+
+                if (!r)
+                {
+                    string error_msg = fmt::format("Deserialization of signed tx data NOT successful! "
+                                                           "Maybe its not base64 encoded?");
+
+                    context["has_error"] = true;
+                    context["error_msg"] = error_msg;
+
+                    return mstch::render(full_page, context);
+                }
+
+                ptx_vector = signed_txs.ptx;
             }
 
-            if (this->enable_pusher == false)
-            {
-                string error_msg = fmt::format(
-                        "Pushing disabled!\n "
-                                "Run explorer with --enable-pusher flag to enable it.");
-
-                context["has_error"] = true;
-                context["error_msg"] = error_msg;
-
-                return mstch::render(full_page, context);
-            }
-
-            bool r {false};
-
-            string s = decoded_raw_tx_data.substr(magiclen);
-
-            ::tools::wallet2::signed_tx_set signed_txs;
-
-            try
-            {
-                std::istringstream iss(s);
-                boost::archive::portable_binary_iarchive ar(iss);
-                ar >> signed_txs;
-
-                r = true;
-            }
-            catch (...)
-            {
-                cerr << "Failed to parse signed tx data " << endl;
-            }
-
-
-            if (!r)
-            {
-                string error_msg = fmt::format("Deserialization of signed tx data NOT successful! "
-                                                       "Maybe its not base64 encoded?");
-
-                context["has_error"] = true;
-                context["error_msg"] = error_msg;
-
-                return mstch::render(full_page, context);
-            }
+            context.emplace("txs", mstch::array{});
 
             mstch::array& txs = boost::get<mstch::array>(context["txs"]);
-
-            std::vector<tools::wallet2::pending_tx> ptx_vector = signed_txs.ptx;
 
             // actually commit the transactions
             while (!ptx_vector.empty())
@@ -4700,7 +4736,7 @@ namespace xmreg
             }
 
             // maxium five last blocks
-            no_of_last_blocks = std::min(no_of_last_blocks, 5ul);
+            no_of_last_blocks = std::min<uint64_t>(no_of_last_blocks, 5ul);
 
             if (address_str.empty())
             {
@@ -4927,7 +4963,7 @@ namespace xmreg
 
                 string emission_blk_no   = std::to_string(current_values.blk_no - 1);
                 string emission_coinbase = xmr_amount_to_str(current_values.coinbase, "{:0.3f}");
-                string emission_fee      = xmr_amount_to_str(current_values.fee, "{:0.3f}");
+                string emission_fee      = xmr_amount_to_str(current_values.fee, "{:0.3f}", false);
 
                 j_data = json {
                         {"blk_no"  , current_values.blk_no - 1},
@@ -5265,6 +5301,9 @@ namespace xmreg
 
             string tx_json = obj_to_json_str(tx);
 
+            // use this regex to remove all non friendly characters in payment_id_as_ascii string
+            static std::regex e {"[^a-zA-Z0-9 ./\\\\!]"};
+
             // initalise page tempate map with basic info about blockchain
             mstch::map context {
                     {"testnet"               , testnet},
@@ -5275,7 +5314,7 @@ namespace xmreg
                     {"tx_blk_height"         , tx_blk_height},
                     {"tx_size"               , fmt::format("{:0.4f}",
                                                            static_cast<double>(txd.size) / 1024.0)},
-                    {"tx_fee"                , xmreg::xmr_amount_to_str(txd.fee)},
+                    {"tx_fee"                , xmreg::xmr_amount_to_str(txd.fee, "{:0.12f}", false)},
                     {"tx_version"            , static_cast<uint64_t>(txd.version)},
                     {"blk_timestamp"         , blk_timestamp},
                     {"blk_timestamp_uint"    , blk.timestamp},
@@ -5287,6 +5326,7 @@ namespace xmreg
                     {"has_payment_id8"       , txd.payment_id8 != null_hash8},
                     {"confirmations"         , txd.no_confirmations},
                     {"payment_id"            , pid_str},
+                    {"payment_id_as_ascii"   , std::regex_replace(txd.payment_id_as_ascii, e, " ")},
                     {"payment_id8"           , pid8_str},
                     {"extra"                 , txd.get_extra_str()},
                     {"with_ring_signatures"  , static_cast<bool>(
@@ -5722,6 +5762,11 @@ namespace xmreg
             txd.size = get_object_blobsize(tx);
 
             txd.extra = tx.extra;
+
+            if (txd.payment_id != null_hash)
+            {
+                txd.payment_id_as_ascii = std::string(txd.payment_id.data, crypto::HASH_SIZE);
+            }
 
             // get tx signatures for each input
             txd.signatures = tx.signatures;
