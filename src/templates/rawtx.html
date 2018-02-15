@@ -5,15 +5,15 @@
     </header>
 
     <p>Paste base64 encoded, unsigned or signed transaction data here<br/>
-    (In Linux, can get base64 signed raw tx data: <i>base64 signed_monero_tx | xclip -selection clipboard</i>)<br/>
-    (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f signed_monero_tx encoded.txt & type "encoded.txt" | clip</i>)</p>
+    (In Linux, can get base64 signed raw tx data: <i>base64 signed_aeon_tx | xclip -selection clipboard</i>)<br/>
+    (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f signed_aeon_tx encoded.txt & type "encoded.txt" | clip</i>)</p>
     <div>
         <form action="/checkandpush" method="post">
 
-          <p>Paste here either a hex string of raw transaction (the <tt>tx_blob</tt> response in the wallet RPC, or the <tt>raw_monero_tx</tt> file saved by the wallet CLI with <tt>--do-not-relay</tt> option specified),<br/>
+          <p>Paste here either a hex string of raw transaction (the <tt>tx_blob</tt> response in the wallet RPC, or the <tt>raw_aeon_tx</tt> file saved by the wallet CLI with <tt>--do-not-relay</tt> option specified),<br/>
           or base64 encoded, unsigned or signed transaction data<br/>
-          (In Linux, can get base64 signed raw tx data: <i>base64 signed_monero_tx | xclip -selection clipboard</i>)<br/>
-          (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f signed_monero_tx encoded.txt & type "encoded.txt" | clip</i>)<br/></p>
+          (In Linux, can get base64 signed raw tx data: <i>base64 signed_aeon_tx | xclip -selection clipboard</i>)<br/>
+          (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f signed_aeon_tx encoded.txt & type "encoded.txt" | clip</i>)<br/></p>
 
             <textarea name="rawtxdata" rows="10" cols="80"></textarea>
 
