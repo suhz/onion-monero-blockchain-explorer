@@ -42,6 +42,10 @@ struct MempoolStatus
         string xmr_outputs_str;
         string timestamp_str;
         string txsize;
+
+        char     pID; // '-' - no payment ID,
+                      // 'l' - legacy, long 64 character payment id,
+                      // 'e' - encrypted, short, from integrated addresses
     };
 
 
@@ -67,6 +71,7 @@ struct MempoolStatus
         uint64_t cumulative_difficulty  {0};
         uint64_t block_size_limit  {0};
         uint64_t start_time  {0};
+        uint64_t current_hf_version {0};
 
         uint64_t hash_rate  {0};
         uint64_t fee_per_kb  {0};

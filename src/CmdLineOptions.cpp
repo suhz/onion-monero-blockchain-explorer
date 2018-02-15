@@ -33,7 +33,7 @@ namespace xmreg
                  "enable key images file checker")
                 ("enable-output-key-checker", value<bool>()->default_value(false)->implicit_value(true),
                  "enable outputs key file checker")
-                ("enable-json-api", value<bool>()->default_value(true),
+                ("enable-json-api", value<bool>()->default_value(true)->implicit_value(true),
                  "enable JSON REST api")
                 ("enable-tx-cache", value<bool>()->default_value(false)->implicit_value(true),
                  "enable caching of transaction details")
@@ -41,6 +41,8 @@ namespace xmreg
                  "show times of getting data from cache vs no cache")
                 ("enable-block-cache", value<bool>()->default_value(false)->implicit_value(true),
                  "enable caching of block details")
+                ("enable-js", value<bool>()->default_value(false)->implicit_value(true),
+                 "enable checking outputs and proving txs using JavaScript on client side")
                 ("enable-autorefresh-option", value<bool>()->default_value(false)->implicit_value(true),
                  "enable users to have the index page on autorefresh")
                 ("enable-emission-monitor", value<bool>()->default_value(false)->implicit_value(true),
@@ -63,7 +65,7 @@ namespace xmreg
                  "path to crt file for ssl (https) functionality")
                 ("ssl-key-file", value<string>(),
                  "path to key file for ssl (https) functionality")
-                ("deamon-url,d", value<string>()->default_value("http:://127.0.0.1:18081"),
+                ("deamon-url,d", value<string>()->default_value("http:://127.0.0.1:11181"),
                  "Monero deamon url");
 
 

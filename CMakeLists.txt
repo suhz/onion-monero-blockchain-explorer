@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 2.8)
 
 set(PROJECT_NAME
-        xmrblocks)
+        aeonblocks)
 
 
 project(${PROJECT_NAME})
 
 set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -std=c++14")
+
 
 if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj -O3")
@@ -52,7 +53,8 @@ find_package(Boost COMPONENTS
         date_time
         REQUIRED)
 
-
+#info https://github.com/arsenm/sanitizers-cmake
+find_package(Sanitizers)
 
 if(APPLE)
     include_directories(/usr/local/opt/openssl/include)
@@ -68,6 +70,7 @@ endif()
 # include boost headers
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories("ext/mstch/include")
+include_directories("ext/crow")
 
 # add ext/ subfolder
 add_subdirectory(ext/)
@@ -84,11 +87,14 @@ set(SOURCE_FILES
 add_executable(${PROJECT_NAME}
         ${SOURCE_FILES})
 
+add_sanitizers(${PROJECT_NAME})
+
 create_git_version()
 
 configure_files(${CMAKE_CURRENT_SOURCE_DIR}/src/templates ${CMAKE_CURRENT_BINARY_DIR}/templates)
 configure_files(${CMAKE_CURRENT_SOURCE_DIR}/src/templates/css ${CMAKE_CURRENT_BINARY_DIR}/templates/css)
 configure_files(${CMAKE_CURRENT_SOURCE_DIR}/src/templates/partials ${CMAKE_CURRENT_BINARY_DIR}/templates/partials)
+configure_files(${CMAKE_CURRENT_SOURCE_DIR}/src/templates/js ${CMAKE_CURRENT_BINARY_DIR}/templates/js)
 
 set(LIBRARIES
         myxrm
@@ -106,8 +112,10 @@ set(LIBRARIES
         ringct
         common
         mnemonics
-        epee
         easylogging
+        checkpoints
+        version
+        epee
         ${Boost_LIBRARIES}
         pthread
         unbound

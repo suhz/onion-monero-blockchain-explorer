@@ -9,9 +9,9 @@
 
 #include "mstch/mstch.hpp"
 
-#include "version.h"
-
 #include "monero_headers.h"
+
+#include "../gen/version.h"
 
 #include "MicroCore.h"
 #include "tools.h"
@@ -20,7 +20,7 @@
 #include "CurrentBlockchainStatus.h"
 #include "MempoolStatus.h"
 
-#include "../ext/crow/http_request.h"
+#include "../ext/crow/crow.h"
 
 #include "../ext/vpetrigocaches/cache.hpp"
 #include "../ext/vpetrigocaches/lru_cache_policy.hpp"
@@ -30,7 +30,7 @@
 #include <limits>
 #include <ctime>
 #include <future>
-#include <regex>
+
 
 #define TMPL_DIR                    "./templates"
 #define TMPL_PARIALS_DIR            TMPL_DIR "/partials"
@@ -55,6 +55,15 @@
 #define TMPL_MY_RAWOUTPUTKEYS       TMPL_DIR "/rawoutputkeys.html"
 #define TMPL_MY_CHECKRAWOUTPUTKEYS  TMPL_DIR "/checkrawoutputkeys.html"
 
+#define JS_JQUERY   TMPL_DIR "/js/jquery.min.js"
+#define JS_CRC32    TMPL_DIR "/js/crc32.js"
+#define JS_BIGINT   TMPL_DIR "/js/biginteger.js"
+#define JS_CONFIG   TMPL_DIR "/js/config.js"
+#define JS_BASE58   TMPL_DIR "/js/base58.js"
+#define JS_CRYPTO   TMPL_DIR "/js/crypto.js"
+#define JS_CNUTIL   TMPL_DIR "/js/cn_util.js"
+#define JS_NACLFAST TMPL_DIR "/js/nacl-fast-cn.js"
+#define JS_SHA3     TMPL_DIR "/js/sha3.js"
 
 #define ONIONEXPLORER_RPC_VERSION_MAJOR 1
 #define ONIONEXPLORER_RPC_VERSION_MINOR 0
@@ -126,6 +135,7 @@ namespace xmreg
         crypto::hash hash;
         crypto::hash prefix_hash;
         crypto::public_key pk;
+        std::vector<crypto::public_key> additional_pks;
         uint64_t xmr_inputs;
         uint64_t xmr_outputs;
         uint64_t num_nonrct_inputs;
@@ -134,6 +144,13 @@ namespace xmreg
         uint64_t size;
         uint64_t blk_height;
         size_t   version;
+
+        bool has_additional_tx_pub_keys {false};
+
+        char     pID; // '-' - no payment ID,
+                      // 'l' - legacy, long 64 character payment id,
+                      // 'e' - encrypted, short, from integrated addresses
+                      // 's' - sub-address (avaliable only for multi-output txs)
         uint64_t unlock_time;
         uint64_t no_confirmations;
         vector<uint8_t> extra;
@@ -188,13 +205,15 @@ namespace xmreg
                     {"version"           , static_cast<uint64_t>(version)},
                     {"has_payment_id"    , payment_id  != null_hash},
                     {"has_payment_id8"   , payment_id8 != null_hash8},
+                    {"pID"               , string {pID}},
                     {"payment_id"        , pod_to_hex(payment_id)},
                     {"confirmations"     , no_confirmations},
                     {"extra"             , get_extra_str()},
                     {"payment_id8"       , pod_to_hex(payment_id8)},
                     {"unlock_time"       , unlock_time},
                     {"tx_size"           , fmt::format("{:0.4f}", tx_size)},
-                    {"tx_size_short"     , fmt::format("{:0.2f}", tx_size)}
+                    {"tx_size_short"     , fmt::format("{:0.2f}", tx_size)},
+                    {"has_add_pks"       , !additional_pks.empty()}
             };
 
 
@@ -257,6 +276,8 @@ namespace xmreg
 
         bool testnet;
 
+        bool enable_js;
+
         bool enable_pusher;
 
         bool enable_key_image_checker;
@@ -276,6 +297,9 @@ namespace xmreg
 
         string testnet_url;
         string mainnet_url;
+
+        string js_html_files;
+        string js_html_files_all_in_one;
 
         // instead of constatnly reading template files
         // from hard drive for each request, we can read
@@ -309,6 +333,7 @@ namespace xmreg
              string _deamon_url,
              bool _testnet,
              bool _enable_pusher,
+             bool _enable_js,
              bool _enable_key_image_checker,
              bool _enable_output_key_checker,
              bool _enable_autorefresh_option,
@@ -326,6 +351,7 @@ namespace xmreg
                   server_timestamp {std::time(nullptr)},
                   testnet {_testnet},
                   enable_pusher {_enable_pusher},
+                  enable_js {_enable_js},
                   enable_key_image_checker {_enable_key_image_checker},
                   enable_output_key_checker {_enable_output_key_checker},
                   enable_autorefresh_option {_enable_autorefresh_option},
@@ -369,6 +395,55 @@ namespace xmreg
             template_file["tx_details"]      = xmreg::read(string(TMPL_PARIALS_DIR) + "/tx_details.html");
             template_file["tx_table_header"] = xmreg::read(string(TMPL_PARIALS_DIR) + "/tx_table_header.html");
             template_file["tx_table_row"]    = xmreg::read(string(TMPL_PARIALS_DIR) + "/tx_table_row.html");
+
+            if (enable_js) {
+                // JavaScript files
+                template_file["jquery.min.js"]   = xmreg::read(JS_JQUERY);
+                template_file["crc32.js"]        = xmreg::read(JS_CRC32);
+                template_file["crypto.js"]       = xmreg::read(JS_CRYPTO);
+                template_file["cn_util.js"]      = xmreg::read(JS_CNUTIL);
+                template_file["base58.js"]       = xmreg::read(JS_BASE58);
+                template_file["nacl-fast-cn.js"] = xmreg::read(JS_NACLFAST);
+                template_file["sha3.js"]         = xmreg::read(JS_SHA3);
+                template_file["config.js"]       = xmreg::read(JS_CONFIG);
+                template_file["biginteger.js"]   = xmreg::read(JS_BIGINT);
+
+                // need to set  "testnet: false," flag to reflect
+                // if we are running testnet or mainnet explorer
+
+                if (testnet)
+                {
+                    template_file["config.js"] = std::regex_replace(
+                            template_file["config.js"],
+                            std::regex("testnet: false"),
+                            "testnet: true");
+                }
+
+                template_file["all_in_one.js"] = template_file["jquery.min.js"] +
+                                                 template_file["crc32.js"] +
+                                                 template_file["biginteger.js"] +
+                                                 template_file["config.js"] +
+                                                 template_file["nacl-fast-cn.js"] +
+                                                 template_file["crypto.js"] +
+                                                 template_file["base58.js"] +
+                                                 template_file["cn_util.js"] +
+                                                 template_file["sha3.js"];
+
+                js_html_files += "<script src=\"/js/jquery.min.js\"></script>";
+                js_html_files += "<script src=\"/js/crc32.js\"></script>";
+                js_html_files += "<script src=\"/js/biginteger.js\"></script>";
+                js_html_files += "<script src=\"/js/config.js\"></script>";
+                js_html_files += "<script src=\"/js/nacl-fast-cn.js\"></script>";
+                js_html_files += "<script src=\"/js/crypto.js\"></script>";
+                js_html_files += "<script src=\"/js/base58.js\"></script>";
+                js_html_files += "<script src=\"/js/cn_util.js\"></script>";
+                js_html_files += "<script src=\"/js/sha3.js\"></script>";
+
+                // /js/all_in_one.js file does not exist. it is generated on the fly
+                // from the above real files.
+                js_html_files_all_in_one = "<script src=\"/js/all_in_one.js\"></script>";
+            }
+
         }
 
         /**
@@ -742,6 +817,7 @@ namespace xmreg
                     {"block_size_limit"  , block_size_limit},
                     {"is_current_info"   , current_network_info.current},
                     {"is_pool_size_zero" , (current_network_info.tx_pool_size == 0)},
+                    {"current_hf_version", current_network_info.current_hf_version},
                     {"age"               , network_info_age.first},
                     {"age_format"        , network_info_age.second},
             };
@@ -885,6 +961,7 @@ namespace xmreg
                         {"xmr_outputs"     , mempool_tx.xmr_outputs_str},
                         {"no_inputs"       , mempool_tx.no_inputs},
                         {"no_outputs"      , mempool_tx.no_outputs},
+                        {"pID"             , string {mempool_tx.pID}},
                         {"no_nonrct_inputs", mempool_tx.num_nonrct_inputs},
                         {"mixin"           , mempool_tx.mixin_no},
                         {"txsize"          , mempool_tx.txsize}
@@ -1406,6 +1483,9 @@ namespace xmreg
 
             add_css_style(context);
 
+            if (enable_js)
+                add_js_files(context);
+
             // render the page
             return mstch::render(template_file["tx"], context, partials);
         }
@@ -1453,9 +1533,9 @@ namespace xmreg
             }
 
             // parse string representing given monero address
-            cryptonote::account_public_address address;
+            cryptonote::address_parse_info address_info;
 
-            if (!xmreg::parse_str_address(xmr_address_str,  address, testnet))
+            if (!xmreg::parse_str_address(xmr_address_str,  address_info, testnet))
             {
                 cerr << "Cant parse string address: " << xmr_address_str << endl;
                 return string("Cant parse xmr address: " + xmr_address_str);
@@ -1464,10 +1544,21 @@ namespace xmreg
             // parse string representing given private key
             crypto::secret_key prv_view_key;
 
-            if (!xmreg::parse_str_secret_key(viewkey_str, prv_view_key))
+            std::vector<crypto::secret_key> multiple_tx_secret_keys;
+
+            if (!xmreg::parse_str_secret_key(viewkey_str, multiple_tx_secret_keys))
             {
                 cerr << "Cant parse the private key: " << viewkey_str << endl;
                 return string("Cant parse private key: " + viewkey_str);
+            }
+            if (multiple_tx_secret_keys.size() == 1)
+            {
+                prv_view_key = multiple_tx_secret_keys[0];
+            }
+            else if (!tx_prove)
+            {
+                cerr << "Concatenated secret keys are only for tx proving!" << endl;
+                return string("Concatenated secret keys are only for tx proving!");
             }
 
 
@@ -1643,18 +1734,43 @@ namespace xmreg
             // public transaction key is combined with our viewkey
             // to create, so called, derived key.
             key_derivation derivation;
+            std::vector<key_derivation> additional_derivations(txd.additional_pks.size());
 
-            public_key pub_key = tx_prove ? address.m_view_public_key : txd.pk;
+            //cout << multiple_tx_secret_keys.size() << " " <<  txd.additional_pks.size() + 1 << '\n';
+
+            if (tx_prove && multiple_tx_secret_keys.size() != txd.additional_pks.size() + 1)
+            {
+                return string("This transaction includes additional tx pubkeys whose "
+                               "size doesn't match with the provided tx secret keys");
+            }
+
+            public_key pub_key = tx_prove ? address_info.address.m_view_public_key : txd.pk;
 
             //cout << "txd.pk: " << pod_to_hex(txd.pk) << endl;
 
-            if (!generate_key_derivation(pub_key, prv_view_key, derivation))
+            if (!generate_key_derivation(pub_key,
+                                         tx_prove ? multiple_tx_secret_keys[0] : prv_view_key,
+                                         derivation))
             {
                 cerr << "Cant get derived key for: "  << "\n"
                      << "pub_tx_key: " << pub_key << " and "
                      << "prv_view_key" << prv_view_key << endl;
 
                 return string("Cant get key_derivation");
+            }
+
+            for (size_t i = 0; i < txd.additional_pks.size(); ++i)
+            {
+                if (!generate_key_derivation(tx_prove ? pub_key : txd.additional_pks[i],
+                                             tx_prove ? multiple_tx_secret_keys[i + 1] : prv_view_key,
+                                             additional_derivations[i]))
+                {
+                    cerr << "Cant get derived key for: "  << "\n"
+                         << "pub_tx_key: " << txd.additional_pks[i] << " and "
+                         << "prv_view_key" << prv_view_key << endl;
+
+                    return string("Cant get key_derivation");
+                }
             }
 
             // decrypt encrypted payment id, as used in integreated addresses
@@ -1688,7 +1804,7 @@ namespace xmreg
 
                 derive_public_key(derivation,
                                   output_idx,
-                                  address.m_spend_public_key,
+                                  address_info.address.m_spend_public_key,
                                   tx_pubkey);
 
                 //cout << pod_to_hex(outp.first.key) << endl;
@@ -1696,6 +1812,20 @@ namespace xmreg
 
                 // check if generated public key matches the current output's key
                 bool mine_output = (outp.first.key == tx_pubkey);
+
+                bool with_additional = false;
+
+                if (!mine_output && txd.additional_pks.size() == txd.output_pub_keys.size())
+                {
+                    derive_public_key(additional_derivations[output_idx],
+                                      output_idx,
+                                      address_info.address.m_spend_public_key,
+                                      tx_pubkey);
+
+                    mine_output = (outp.first.key == tx_pubkey);
+
+                    with_additional = true;
+                }
 
                 // if mine output has RingCT, i.e., tx version is 2
                 if (mine_output && tx.version == 2)
@@ -1711,8 +1841,7 @@ namespace xmreg
                         bool r;
 
                         r = decode_ringct(tx.rct_signatures,
-                                          pub_key,
-                                          prv_view_key,
+                                          with_additional ? additional_derivations[output_idx] : derivation,
                                           output_idx,
                                           tx.rct_signatures.ecdhInfo[output_idx].mask,
                                           rct_amount);
@@ -1734,10 +1863,10 @@ namespace xmreg
                 }
 
                 outputs.push_back(mstch::map {
-                        {"out_pub_key"   , pod_to_hex(outp.first.key)},
-                        {"amount"        , xmreg::xmr_amount_to_str(outp.second)},
-                        {"mine_output"   , mine_output},
-                        {"output_idx"    , fmt::format("{:02d}", output_idx)}
+                        {"out_pub_key"           , pod_to_hex(outp.first.key)},
+                        {"amount"                , xmreg::xmr_amount_to_str(outp.second)},
+                        {"mine_output"           , mine_output},
+                        {"output_idx"            , fmt::format("{:02d}", output_idx)}
                 });
 
                 ++output_idx;
@@ -1883,12 +2012,14 @@ namespace xmreg
 
                     public_key mixin_tx_pub_key
                             = xmreg::get_tx_pub_key_from_received_outs(mixin_tx);
+                    std::vector<public_key> mixin_additional_tx_pub_keys = cryptonote::get_additional_tx_pub_keys_from_extra(mixin_tx);
 
                     string mixin_tx_pub_key_str = pod_to_hex(mixin_tx_pub_key);
 
                     // public transaction key is combined with our viewkey
                     // to create, so called, derived key.
                     key_derivation derivation;
+                    std::vector<key_derivation> additional_derivations(mixin_additional_tx_pub_keys.size());
 
                     if (!generate_key_derivation(mixin_tx_pub_key, prv_view_key, derivation))
                     {
@@ -1897,6 +2028,17 @@ namespace xmreg
                              << "prv_view_key" << prv_view_key << endl;
 
                         continue;
+                    }
+                    for (size_t i = 0; i < mixin_additional_tx_pub_keys.size(); ++i)
+                    {
+                        if (!generate_key_derivation(mixin_additional_tx_pub_keys[i], prv_view_key, additional_derivations[i]))
+                        {
+                            cerr << "Cant get derived key for: "  << "\n"
+                                 << "pub_tx_key: " << mixin_additional_tx_pub_keys[i] << " and "
+                                 << "prv_view_key" << prv_view_key << endl;
+        
+                            continue;
+                        }
                     }
 
                     //          <public_key  , amount  , out idx>
@@ -1943,11 +2085,21 @@ namespace xmreg
 
                         derive_public_key(derivation,
                                           output_idx_in_tx,
-                                          address.m_spend_public_key,
+                                          address_info.address.m_spend_public_key,
                                           tx_pubkey_generated);
 
                         // check if generated public key matches the current output's key
                         bool mine_output = (txout_k.key == tx_pubkey_generated);
+                        bool with_additional = false;
+                        if (!mine_output && mixin_additional_tx_pub_keys.size() == output_pub_keys.size())
+                        {
+                            derive_public_key(additional_derivations[output_idx_in_tx],
+                                              output_idx_in_tx,
+                                              address_info.address.m_spend_public_key,
+                                              tx_pubkey_generated);
+                            mine_output = (txout_k.key == tx_pubkey_generated);
+                            with_additional = true;
+                        }
 
 
                         if (mine_output && mixin_tx.version == 2)
@@ -1962,8 +2114,7 @@ namespace xmreg
                                 bool r;
 
                                 r = decode_ringct(mixin_tx.rct_signatures,
-                                                  mixin_tx_pub_key,
-                                                  prv_view_key,
+                                                  with_additional ? additional_derivations[output_idx_in_tx] : derivation,
                                                   output_idx_in_tx,
                                                   mixin_tx.rct_signatures.ecdhInfo[output_idx_in_tx].mask,
                                                   rct_amount);
@@ -2114,9 +2265,9 @@ namespace xmreg
         show_prove(string tx_hash_str,
                    string xmr_address_str,
                    string tx_prv_key_str,
+                   string const& raw_tx_data,
                    string domain)
         {
-            string raw_tx_data {""}; // not using it in prove tx. only for outputs
 
             return show_my_outputs(tx_hash_str, xmr_address_str,
                                    tx_prv_key_str, raw_tx_data,
@@ -2173,6 +2324,9 @@ namespace xmreg
             string full_page = template_file["checkrawtx"];
 
             add_css_style(context);
+
+            if (enable_js)
+                add_js_files(context);
 
             if (unsigned_tx_given)
             {
@@ -2234,7 +2388,8 @@ namespace xmreg
                         for (const tx_destination_entry& a_dest: tx_cd.splitted_dsts)
                         {
                             mstch::map dest_info {
-                                    {"dest_address"  , get_account_address_as_str(testnet, a_dest.addr)},
+                                    {"dest_address"  , get_account_address_as_str(
+                                            testnet, a_dest.is_subaddress, a_dest.addr)},
                                     {"dest_amount"   , xmreg::xmr_amount_to_str(a_dest.amount)}
                             };
 
@@ -2513,6 +2668,9 @@ namespace xmreg
 
                     add_css_style(context);
 
+                    if (enable_js)
+                        add_js_files(context);
+
                     // render the page
                     return mstch::render(template_file["checkrawtx"], context, partials);
 
@@ -2574,7 +2732,8 @@ namespace xmreg
 
                         destination_addresses.push_back(
                                 mstch::map {
-                                        {"dest_address"   , get_account_address_as_str(testnet, a_dest.addr)},
+                                        {"dest_address"   , get_account_address_as_str(
+                                                testnet, a_dest.is_subaddress, a_dest.addr)},
                                         {"dest_amount"    , xmreg::xmr_amount_to_str(a_dest.amount)},
                                         {"is_this_change" , false}
                                 }
@@ -2590,8 +2749,10 @@ namespace xmreg
                     {
                         destination_addresses.push_back(
                                 mstch::map {
-                                        {"dest_address"   , get_account_address_as_str(testnet, ptx.construction_data.change_dts.addr)},
-                                        {"dest_amount"    , xmreg::xmr_amount_to_str(ptx.construction_data.change_dts.amount)},
+                                        {"dest_address"   , get_account_address_as_str(
+                                                testnet, ptx.construction_data.change_dts.is_subaddress, ptx.construction_data.change_dts.addr)},
+                                        {"dest_amount"    ,
+                                                xmreg::xmr_amount_to_str(ptx.construction_data.change_dts.amount)},
                                         {"is_this_change" , true}
                                 }
                         );
@@ -2755,6 +2916,7 @@ namespace xmreg
                 }
 
             }
+
 
             map<string, string> partials {
                     {"tx_details", template_file["tx_details"]},
@@ -3048,7 +3210,7 @@ namespace xmreg
 
             context["data_prefix"] = data_prefix;
 
-            if (!strncmp(decoded_raw_data.c_str(), KEY_IMAGE_EXPORT_FILE_MAGIC, magiclen) == 0)
+            if (strncmp(decoded_raw_data.c_str(), KEY_IMAGE_EXPORT_FILE_MAGIC, magiclen) != 0)
             {
                 string error_msg = fmt::format("This does not seem to be key image export data.");
 
@@ -3078,7 +3240,7 @@ namespace xmreg
             const size_t header_lenght = 2 * sizeof(crypto::public_key);
             const size_t key_img_size  = sizeof(crypto::key_image);
             const size_t record_lenght = key_img_size + sizeof(crypto::signature);
-            const size_t chacha_length = sizeof(crypto::chacha8_key);
+            const size_t chacha_length = sizeof(crypto::chacha_key);
 
             if (decoded_raw_data.size() < header_lenght)
             {
@@ -3096,8 +3258,13 @@ namespace xmreg
                     reinterpret_cast<const account_public_address*>(
                             decoded_raw_data.data());
 
-            context.insert({"address"        , REMOVE_HASH_BRAKETS(xmreg::print_address(*xmr_address, testnet))});
-            context.insert({"viewkey"        , REMOVE_HASH_BRAKETS(fmt::format("{:s}", prv_view_key))});
+            address_parse_info address_info {*xmr_address, false};
+
+
+            context.insert({"address"        , REMOVE_HASH_BRAKETS(
+                    xmreg::print_address(address_info, testnet))});
+            context.insert({"viewkey"        , REMOVE_HASH_BRAKETS(
+                    fmt::format("{:s}", prv_view_key))});
             context.insert({"has_total_xmr"  , false});
             context.insert({"total_xmr"      , string{}});
             context.insert({"key_imgs"       , mstch::array{}});
@@ -3123,7 +3290,8 @@ namespace xmreg
                         {"key_no"              , fmt::format("{:03d}", n)},
                         {"key_image"           , pod_to_hex(key_image)},
                         {"signature"           , fmt::format("{:s}", signature)},
-                        {"address"             , xmreg::print_address(*xmr_address, testnet)},
+                        {"address"             , xmreg::print_address(
+                                                    address_info, testnet)},
                         {"is_spent"            , core_storage->have_tx_keyimg_as_spent(key_image)},
                         {"tx_hash"             , string{}}
                 };
@@ -3187,7 +3355,7 @@ namespace xmreg
 
             context["data_prefix"] = data_prefix;
 
-            if (!strncmp(decoded_raw_data.c_str(), OUTPUT_EXPORT_FILE_MAGIC, magiclen) == 0)
+            if (strncmp(decoded_raw_data.c_str(), OUTPUT_EXPORT_FILE_MAGIC, magiclen) != 0)
             {
                 string error_msg = fmt::format("This does not seem to be output keys export data.");
 
@@ -3224,8 +3392,12 @@ namespace xmreg
                     reinterpret_cast<const account_public_address*>(
                             decoded_raw_data.data());
 
-            context.insert({"address"        , REMOVE_HASH_BRAKETS(xmreg::print_address(*xmr_address, testnet))});
-            context.insert({"viewkey"        , REMOVE_HASH_BRAKETS(fmt::format("{:s}", prv_view_key))});
+            address_parse_info address_info {*xmr_address, false};
+
+            context.insert({"address"        , REMOVE_HASH_BRAKETS(
+                    xmreg::print_address(address_info, testnet))});
+            context.insert({"viewkey"        , REMOVE_HASH_BRAKETS(
+                    fmt::format("{:s}", prv_view_key))});
             context.insert({"has_total_xmr"  , false});
             context.insert({"total_xmr"      , string{}});
             context.insert({"output_keys"    , mstch::array{}});
@@ -3289,6 +3461,7 @@ namespace xmreg
                     }
 
                     public_key tx_pub_key = xmreg::get_tx_pub_key_from_received_outs(tx);
+                    std::vector<public_key> additional_tx_pub_keys = cryptonote::get_additional_tx_pub_keys_from_extra(tx);
 
                     // cointbase txs have amounts in plain sight.
                     // so use amount from ringct, only for non-coinbase txs
@@ -3297,6 +3470,12 @@ namespace xmreg
 
                         bool r = decode_ringct(tx.rct_signatures,
                                                tx_pub_key,
+                                               prv_view_key,
+                                               td.m_internal_output_index,
+                                               tx.rct_signatures.ecdhInfo[td.m_internal_output_index].mask,
+                                               xmr_amount);
+                        r = r || decode_ringct(tx.rct_signatures,
+                                               additional_tx_pub_keys[td.m_internal_output_index],
                                                prv_view_key,
                                                td.m_internal_output_index,
                                                tx.rct_signatures.ecdhInfo[td.m_internal_output_index].mask,
@@ -3431,21 +3610,21 @@ namespace xmreg
             if (search_str_length == 95)
             {
                 // parse string representing given monero address
-                cryptonote::account_public_address address;
+                address_parse_info address_info;
 
                 bool testnet_addr {false};
 
-                if (search_text[0] == '9' || search_text[0] == 'A')
+                if (search_text[0] == '9' || search_text[0] == 'A' || search_text[0] == 'B')
                     testnet_addr = true;
 
-                if (!xmreg::parse_str_address(search_text, address, testnet_addr))
+                if (!xmreg::parse_str_address(search_text, address_info, testnet_addr))
                 {
                     cerr << "Cant parse string address: " << search_text << endl;
                     return string("Cant parse address (probably incorrect format): ")
                            + search_text;
                 }
 
-                return show_address_details(address, testnet_addr);
+                return show_address_details(address_info, testnet_addr);
             }
 
             // check if integrated monero address is given based on its length
@@ -3455,22 +3634,18 @@ namespace xmreg
 
                 cryptonote::account_public_address address;
 
-                bool has_payment_id;
+                address_parse_info address_info;
 
-                crypto::hash8 encrypted_payment_id;
-
-                if (!get_account_integrated_address_from_str(address,
-                                                             has_payment_id,
-                                                             encrypted_payment_id,
-                                                             testnet,
-                                                             search_text))
+                if (!get_account_address_from_str(address_info, testnet, search_text))
                 {
                     cerr << "Cant parse string integerated address: " << search_text << endl;
                     return string("Cant parse address (probably incorrect format): ")
                            + search_text;
                 }
 
-                return show_integrated_address_details(address, encrypted_payment_id, testnet);
+                return show_integrated_address_details(address_info,
+                                                       address_info.payment_id,
+                                                       testnet);
             }
 
             // all_possible_tx_hashes was field using custom lmdb database
@@ -3484,12 +3659,12 @@ namespace xmreg
         }
 
         string
-        show_address_details(const account_public_address& address, bool testnet = false)
+        show_address_details(const address_parse_info& address_info, bool testnet = false)
         {
 
-            string address_str      = xmreg::print_address(address, testnet);
-            string pub_viewkey_str  = fmt::format("{:s}", address.m_view_public_key);
-            string pub_spendkey_str = fmt::format("{:s}", address.m_spend_public_key);
+            string address_str      = xmreg::print_address(address_info, testnet);
+            string pub_viewkey_str  = fmt::format("{:s}", address_info.address.m_view_public_key);
+            string pub_spendkey_str = fmt::format("{:s}", address_info.address.m_spend_public_key);
 
             mstch::map context {
                     {"xmr_address"        , REMOVE_HASH_BRAKETS(address_str)},
@@ -3507,14 +3682,14 @@ namespace xmreg
 
         // ;
         string
-        show_integrated_address_details(const account_public_address& address,
+        show_integrated_address_details(const address_parse_info& address_info,
                                         const crypto::hash8& encrypted_payment_id,
                                         bool testnet = false)
         {
 
-            string address_str        = xmreg::print_address(address, testnet);
-            string pub_viewkey_str    = fmt::format("{:s}", address.m_view_public_key);
-            string pub_spendkey_str   = fmt::format("{:s}", address.m_spend_public_key);
+            string address_str        = xmreg::print_address(address_info, testnet);
+            string pub_viewkey_str    = fmt::format("{:s}", address_info.address.m_view_public_key);
+            string pub_spendkey_str   = fmt::format("{:s}", address_info.address.m_spend_public_key);
             string enc_payment_id_str = fmt::format("{:s}", encrypted_payment_id);
 
             mstch::map context {
@@ -3725,6 +3900,15 @@ namespace xmreg
 
             // render the page
             return  mstch::render(full_page, context, partials);
+        }
+
+        string
+        get_js_file(string const& fname)
+        {
+            if (template_file.count(fname))
+                return template_file[fname];
+
+            return string{};
         }
 
 
@@ -4567,9 +4751,9 @@ namespace xmreg
             }
 
             // parse string representing given monero address
-            cryptonote::account_public_address address;
+            address_parse_info address_info;
 
-            if (!xmreg::parse_str_address(address_str,  address, testnet))
+            if (!xmreg::parse_str_address(address_str,  address_info, testnet))
             {
                 j_response["status"]  = "error";
                 j_response["message"] = "Cant parse monero address: " + address_str;
@@ -4612,8 +4796,9 @@ namespace xmreg
             // public transaction key is combined with our viewkey
             // to create, so called, derived key.
             key_derivation derivation;
+            std::vector<key_derivation> additional_derivations(txd.additional_pks.size());
 
-            public_key pub_key = tx_prove ? address.m_view_public_key : txd.pk;
+            public_key pub_key = tx_prove ? address_info.address.m_view_public_key : txd.pk;
 
             //cout << "txd.pk: " << pod_to_hex(txd.pk) << endl;
 
@@ -4622,6 +4807,15 @@ namespace xmreg
                 j_response["status"]  = "error";
                 j_response["message"] = "Cant calculate key_derivation";
                 return j_response;
+            }
+            for (size_t i = 0; i < txd.additional_pks.size(); ++i)
+            {
+                if (!generate_key_derivation(txd.additional_pks[i], prv_view_key, additional_derivations[i]))
+                {
+                    j_response["status"]  = "error";
+                    j_response["message"] = "Cant calculate key_derivation";
+                    return j_response;
+                }
             }
 
             uint64_t output_idx {0};
@@ -4641,11 +4835,21 @@ namespace xmreg
 
                 derive_public_key(derivation,
                                   output_idx,
-                                  address.m_spend_public_key,
+                                  address_info.address.m_spend_public_key,
                                   tx_pubkey);
 
                 // check if generated public key matches the current output's key
                 bool mine_output = (outp.first.key == tx_pubkey);
+                bool with_additional = false;
+                if (!mine_output && txd.additional_pks.size() == txd.output_pub_keys.size())
+                {
+                    derive_public_key(additional_derivations[output_idx],
+                                      output_idx,
+                                      address_info.address.m_spend_public_key,
+                                      tx_pubkey);
+                    mine_output = (outp.first.key == tx_pubkey);
+                    with_additional = true;
+                }
 
                 // if mine output has RingCT, i.e., tx version is 2
                 if (mine_output && tx.version == 2)
@@ -4661,8 +4865,7 @@ namespace xmreg
                         bool r;
 
                         r = decode_ringct(tx.rct_signatures,
-                                          pub_key,
-                                          prv_view_key,
+                                          with_additional ? additional_derivations[output_idx] : derivation,
                                           output_idx,
                                           tx.rct_signatures.ecdhInfo[output_idx].mask,
                                           rct_amount);
@@ -4694,7 +4897,7 @@ namespace xmreg
             // check if submited data in the request
             // matches to what was used to produce response.
             j_data["tx_hash"]  = pod_to_hex(txd.hash);
-            j_data["address"]  = pod_to_hex(address);
+            j_data["address"]  = pod_to_hex(address_info.address);
             j_data["viewkey"]  = pod_to_hex(prv_view_key);
             j_data["tx_prove"] = tx_prove;
 
@@ -4753,9 +4956,9 @@ namespace xmreg
             }
 
             // parse string representing given monero address
-            cryptonote::account_public_address address;
+            address_parse_info address_info;
 
-            if (!xmreg::parse_str_address(address_str, address, testnet))
+            if (!xmreg::parse_str_address(address_str, address_info, testnet))
             {
                 j_response["status"]  = "error";
                 j_response["message"] = "Cant parse monero address: " + address_str;
@@ -4801,7 +5004,7 @@ namespace xmreg
                 }
 
                 if (!find_our_outputs(
-                        address, prv_view_key,
+                        address_info.address, prv_view_key,
                         0 /* block_no */, true /*is mempool*/,
                         tmp_vector.cbegin(), tmp_vector.cend(),
                         j_outptus /* found outputs are pushed to this*/,
@@ -4858,7 +5061,7 @@ namespace xmreg
                 (void) missed_txs;
 
                 if (!find_our_outputs(
-                        address, prv_view_key,
+                        address_info.address, prv_view_key,
                         block_no, false /*is mempool*/,
                         blk_txs.cbegin(), blk_txs.cend(),
                         j_outptus /* found outputs are pushed to this*/,
@@ -4876,7 +5079,7 @@ namespace xmreg
             // return parsed values. can be use to double
             // check if submited data in the request
             // matches to what was used to produce response.
-            j_data["address"]  = pod_to_hex(address);
+            j_data["address"]  = pod_to_hex(address_info.address);
             j_data["viewkey"]  = pod_to_hex(prv_view_key);
             j_data["limit"]    = _limit;
             j_data["height"]   = height;
@@ -5066,6 +5269,16 @@ namespace xmreg
                     return false;
                 }
 
+                std::vector<key_derivation> additional_derivations(txd.additional_pks.size());
+                for (size_t i = 0; i < txd.additional_pks.size(); ++i)
+                {
+                    if (!generate_key_derivation(txd.additional_pks[i], prv_view_key, additional_derivations[i]))
+                    {
+                        error_msg = "Cant calculate key_derivation";
+                        return false;
+                    }
+                }
+
                 uint64_t output_idx{0};
 
                 std::vector<uint64_t> money_transfered(tx.vout.size(), 0);
@@ -5088,6 +5301,16 @@ namespace xmreg
 
                     // check if generated public key matches the current output's key
                     bool mine_output = (outp.first.key == tx_pubkey);
+                    bool with_additional = false;
+                    if (!mine_output && txd.additional_pks.size() == txd.output_pub_keys.size())
+                    {
+                        derive_public_key(additional_derivations[output_idx],
+                                          output_idx,
+                                          address.m_spend_public_key,
+                                          tx_pubkey);
+                        mine_output = (outp.first.key == tx_pubkey);
+                        with_additional = true;
+                    }
 
                     // if mine output has RingCT, i.e., tx version is 2
                     if (mine_output && tx.version == 2)
@@ -5105,8 +5328,7 @@ namespace xmreg
                             rct::key mask = tx.rct_signatures.ecdhInfo[output_idx].mask;
 
                             r = decode_ringct(tx.rct_signatures,
-                                              txd.pk,
-                                              prv_view_key,
+                                              with_additional ? additional_derivations[output_idx] : derivation,
                                               output_idx,
                                               mask,
                                               rct_amount);
@@ -5326,7 +5548,7 @@ namespace xmreg
                     {"has_payment_id8"       , txd.payment_id8 != null_hash8},
                     {"confirmations"         , txd.no_confirmations},
                     {"payment_id"            , pid_str},
-                    {"payment_id_as_ascii"   , std::regex_replace(txd.payment_id_as_ascii, e, " ")},
+                    {"payment_id_as_ascii"   , remove_bad_chars(txd.payment_id_as_ascii)},
                     {"payment_id8"           , pid8_str},
                     {"extra"                 , txd.get_extra_str()},
                     {"with_ring_signatures"  , static_cast<bool>(
@@ -5341,6 +5563,20 @@ namespace xmreg
                     {"from_cache"            , false},
                     {"construction_time"     , string {}},
             };
+
+            // append tx_json as in raw format to html
+            context["tx_json_raw"] = mstch::lambda{[=](const std::string& text) -> mstch::node {
+                return tx_json;
+            }};
+
+            // append additional public tx keys, if there are any, to the html context
+
+            string add_tx_pub_keys;
+
+            for (auto const& apk: txd.additional_pks)
+                add_tx_pub_keys += pod_to_hex(apk) + ";";
+
+            context["add_tx_pub_keys"] = add_tx_pub_keys;
 
             string server_time_str = xmreg::timestamp_to_str_gm(server_timestamp, "%F");
 
@@ -5644,11 +5880,12 @@ namespace xmreg
                 outputs_xmr_sum += outp.second;
 
                 outputs.push_back(mstch::map {
-                        {"out_pub_key"   , pod_to_hex(outp.first.key)},
-                        {"amount"        , xmreg::xmr_amount_to_str(outp.second)},
-                        {"amount_idx"    , out_amount_index_str},
-                        {"num_outputs"   , num_outputs_amount},
-                        {"output_idx"    , fmt::format("{:02d}", output_idx++)}
+                        {"out_pub_key"           , pod_to_hex(outp.first.key)},
+                        {"amount"                , xmreg::xmr_amount_to_str(outp.second)},
+                        {"amount_idx"            , out_amount_index_str},
+                        {"num_outputs"           , num_outputs_amount},
+                        {"unformated_output_idx" , output_idx},
+                        {"output_idx"            , fmt::format("{:02d}", output_idx++)}
                 });
             }
 
@@ -5732,6 +5969,7 @@ namespace xmreg
             // due to previous bug with sining txs:
             // https://github.com/monero-project/monero/pull/1358/commits/7abfc5474c0f86e16c405f154570310468b635c2
             txd.pk = xmreg::get_tx_pub_key_from_received_outs(tx);
+            txd.additional_pks = cryptonote::get_additional_tx_pub_keys_from_extra(tx);
 
 
             // sum xmr in inputs and ouputs in the given tx
@@ -5756,6 +5994,8 @@ namespace xmreg
                 }
             }
 
+            txd.pID = '-'; // no payment ID
+
             get_payment_id(tx, txd.payment_id, txd.payment_id8);
 
             // get tx size in bytes
@@ -5766,6 +6006,18 @@ namespace xmreg
             if (txd.payment_id != null_hash)
             {
                 txd.payment_id_as_ascii = std::string(txd.payment_id.data, crypto::HASH_SIZE);
+                txd.pID = 'l'; // legacy payment id
+            }
+            else if (txd.payment_id8 != null_hash8)
+            {
+                txd.pID = 'e'; // encrypted payment id
+            }
+            else if (txd.additional_pks.empty() == false)
+            {
+                // if multioutput tx have additional public keys,
+                // mark it so that it represents that it has at least
+                // one sub-address
+                txd.pID = 's';
             }
 
             // get tx signatures for each input
@@ -5929,7 +6181,8 @@ namespace xmreg
                {"cumulative_difficulty"     , local_copy_network_info.cumulative_difficulty},
                {"block_size_limit"          , local_copy_network_info.block_size_limit},
                {"start_time"                , local_copy_network_info.start_time},
-               {"fee_per_kb"                , local_copy_network_info.fee_per_kb}
+               {"fee_per_kb"                , local_copy_network_info.fee_per_kb},
+               {"current_hf_version"        , local_copy_network_info.current_hf_version}
             };
 
             return local_copy_network_info.current;
@@ -5977,8 +6230,21 @@ namespace xmreg
         void
         add_css_style(mstch::map& context)
         {
+            // add_css_style goes to every subpage so here we mark
+            // if js is anabled or not.
+            context["enable_js"] = enable_js;
+
             context["css_styles"] = mstch::lambda{[&](const std::string& text) -> mstch::node {
                 return template_file["css_styles"];
+            }};
+        }
+
+        void
+        add_js_files(mstch::map& context)
+        {
+            context["js_files"] = mstch::lambda{[&](const std::string& text) -> mstch::node {
+                //return this->js_html_files;
+                return this->js_html_files_all_in_one;
             }};
         }
 
