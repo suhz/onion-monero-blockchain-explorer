@@ -110,6 +110,8 @@ set(LIBRARIES
         blocks
         lmdb
         ringct
+        ringct_basic
+        device
         common
         mnemonics
         easylogging
@@ -124,7 +126,7 @@ set(LIBRARIES
         ssl)
 
 if(APPLE)
-    set(LIBRARIES ${LIBRARIES} "-framework IOKit")
+    set(LIBRARIES ${LIBRARIES} "-framework IOKit -framework PCSC")
 else()
     set(LIBRARIES ${LIBRARIES} atomic)
 endif()
