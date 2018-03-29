@@ -13,6 +13,9 @@ var config = {
     addressPrefixTestnet: 0x0426,
     integratedAddressPrefixTestnet: 0x2C27,
     subAddressPrefixTestnet: 0x0AAC,
+    addressPrefixStagenet: 0x011A,
+    integratedAddressPrefixStagenet: 0x2C1B,
+    subAddressPrefixStagenet: 0x0B20,
     feePerKB: new JSBigInt('2000000000'),//20^10 - for testnet its not used, as fee is dynamic.
     dustThreshold: new JSBigInt('1000000000'),//10^10 used for choosing outputs/change - we decompose all the way down if the receiver wants now regardless of threshold
     txChargeRatio: 0.5,

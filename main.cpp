@@ -72,11 +72,13 @@ main(int ac, const char* av[])
 
     bool testnet                      {*testnet_opt};
     bool stagenet                     {*stagenet_opt};
+
     if (testnet && stagenet)
     {
         cerr << "testnet and stagenet cannot be specified at the same time!" << endl;
         return EXIT_FAILURE;
     }
+
     const cryptonote::network_type nettype = testnet ?
         cryptonote::network_type::TESTNET : stagenet ?
         cryptonote::network_type::STAGENET : cryptonote::network_type::MAINNET;
@@ -164,10 +166,10 @@ main(int ac, const char* av[])
 
     string deamon_url {*deamon_url_opt};
 
-    if (testnet && deamon_url == "http:://127.0.0.1:18081")
-        deamon_url = "http:://127.0.0.1:28081";
-    if (stagenet && deamon_url == "http:://127.0.0.1:18081")
-        deamon_url = "http:://127.0.0.1:38081";
+    if (testnet && deamon_url == "http:://127.0.0.1:11181")
+        deamon_url = "http:://127.0.0.1:21181";
+    if (stagenet && deamon_url == "http:://127.0.0.1:11181")
+        deamon_url = "http:://127.0.0.1:31181";
 
     uint64_t mempool_info_timeout {5000};
 
