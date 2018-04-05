@@ -1,7 +1,7 @@
 
 <p>
     <center>
-    <!--Server time: {{server_timestamp}} | -->Hard fork: v{{current_hf_version}} | <a href="/txpool">Tx pool</a>
+    Server time: {{server_timestamp}} | <a href="/txpool">Tx pool</a>
     {{#enable_pusher}}
        | <a href="/rawtx">Tx pusher </a>
     {{/enable_pusher}}
@@ -92,13 +92,14 @@
         </div>
     </div>
 
+    <center>
     {{^is_current_info}}
-        <center>
-            <small>
-                Data from {{age}} {{age_format}} ago
-            </small>
-        </center>
+      <small>&bull; Data from {{age}} {{age_format}} ago </small>
     {{/is_current_info}}
+    {{^current_hf_version}}
+      <small>&bull; Hard fork: v{{current_hf_version}} </small>
+    {{/current_hf_version}}
+    </center>
 
 {{/network_info}}
 
