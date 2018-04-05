@@ -1,9 +1,9 @@
 
 <p>
     <center>
-    Server time: {{server_timestamp}}  | <a href="/txpool">Transaction pool</a>
+    <!--Server time: {{server_timestamp}} | -->Hard fork: v{{current_hf_version}} | <a href="/txpool">Tx pool</a>
     {{#enable_pusher}}
-       | <a href="/rawtx">Transaction pusher </a>
+       | <a href="/rawtx">Tx pusher </a>
     {{/enable_pusher}}
     {{#enable_key_image_checker}}
        | <a href="/rawkeyimgs">Key images checker</a>
@@ -23,12 +23,18 @@
     {{#testnet_url}}
        | <a href="{{testnet_url}}">Go to testnet explorer</a>
     {{/testnet_url}}
+    {{#stagenet_url}}
+       | <a href="{{stagenet_url}}">Go to stagenet explorer</a>
+    {{/stagenet_url}}
     {{#mainnet_url}}
        | <a href="{{mainnet_url}}">Go to mainnet explorer</a>
     {{/mainnet_url}}
     {{#testnet}}
        | This is <span style="color:#ff6b62">testnet</span> blockchian
     {{/testnet}}
+    {{#stagenet}}
+       | This is <span style="color:#ff6b62">stagenet</span> blockchian
+    {{/stagenet}}
     </center>
 </p>
 
@@ -119,9 +125,9 @@
                 <th>age {{age_format}}<!--(Δm)--></th>
                 <th>size [kB]<!--(Δm)--></th>
                 <th>tx hash</th>
-                <th>fees</th>
+                <th>fee</th>
                 <th>outputs</th>
-                <th>in(nonrct)/out</th>
+                <th>in/out/pID</th>
                 <th>ring size</th>
                 <th>tx size [kB]</th>
             </tr>
@@ -134,7 +140,7 @@
                     <td><a href="/tx/{{hash}}">{{hash}}</a></td>
                     <td>{{tx_fee_short}}</td>
                     <td>{{sum_outputs_short}}</td>
-                    <td>{{no_inputs}}({{no_nonrct_inputs}})/{{no_outputs}}</td>
+                    <td>{{no_inputs}}/{{no_outputs}}/{{pID}}</td>
                     <td>{{mixin}}</td>
                     <td>{{tx_size_short}}</td>
                 </tr>

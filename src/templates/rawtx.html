@@ -10,10 +10,12 @@
     <div>
         <form action="/checkandpush" method="post">
 
-          <p>Paste here either a hex string of raw transaction (the <tt>tx_blob</tt> response in the wallet RPC, or the <tt>raw_monero_tx</tt> file saved by the wallet CLI with <tt>--do-not-relay</tt> option specified),<br/>
+          <p>Paste here either a hex string of raw transaction<br/>
+          (the <i>tx_blob</i> response in the wallet RPC, or the <i>raw_monero_tx</i>
+          file saved by the wallet CLI with <i>--do-not-relay</i> option specified),<br/>
           or base64 encoded, unsigned or signed transaction data<br/>
-          (In Linux, can get base64 signed raw tx data: <i>base64 signed_monero_tx | xclip -selection clipboard</i>)<br/>
-          (In Windows, can get base64 signed raw tx data: <i>certutil.exe -encode -f signed_monero_tx encoded.txt & type "encoded.txt" | clip</i>)<br/></p>
+          (In Linux, can get the raw tx data: <i>cat raw_monero_tx | xclip -selection clipboard</i>)<br/>
+          (In Windows, can get the raw tx data: <i>certutil.exe -encode -f raw_monero_tx encoded.txt & type "encoded.txt" | clip</i>)<br/></p>
 
             <textarea name="rawtxdata" rows="10" cols="80"></textarea>
 

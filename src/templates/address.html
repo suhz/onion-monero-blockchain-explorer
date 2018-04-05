@@ -3,11 +3,14 @@
 
 	<h2 class="no-padding">Address: <span class="label">{{xmr_address}}</span></h2>
     {{#testnet}}
-	<h2 class="no-padding">Testnet Address: <span class="label">Yes</span></h2>
+      <h2 class="no-padding">Network type: <span class="label">Testnet</span></h2>
     {{/testnet}}
-    {{^testnet}}
-	<h2 class="no-padding">Testnet Address: <span class="label">Yes</span></h2>
-    {{/testnet}}
+    {{#stagenet}}
+      <h2 class="no-padding">Network type: <span class="label">Stagenet</span></h2>
+    {{/stagenet}}
+    {{^testnet}}{{^stagenet}}
+      <h2 class="no-padding">Network type: <span class="label">Mainnet</span></h2>
+    {{/stagenet}}{{/testnet}}
 
 
 <div class="card" style="margin-top:10px">
@@ -30,4 +33,3 @@
 
 </div>
 <br/>
-
