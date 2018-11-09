@@ -158,7 +158,7 @@ main(int ac, const char* av[])
 
     // initialize mcore and core_storage
     if (!xmreg::init_blockchain(blockchain_path.string(),
-                               mcore, core_storage))
+                               mcore, core_storage, nettype))
     {
         cerr << "Error accessing blockchain." << endl;
         return EXIT_FAILURE;
@@ -227,6 +227,10 @@ main(int ac, const char* av[])
     xmreg::MempoolStatus::set_blockchain_variables(
             &mcore, core_storage);
 
+    xmreg::MempoolStatus::network_info initial_info;
+    strcpy(initial_info.block_size_limit_str, "0.0");
+    strcpy(initial_info.block_size_median_str, "0.0");
+    xmreg::MempoolStatus::current_network_info = initial_info;
 
     try
     {
@@ -319,7 +323,7 @@ main(int ac, const char* av[])
             || post_body.count("viewkey") == 0
             || post_body.count("tx_hash") == 0)
         {
-            return string("xmr address, viewkey or tx hash not provided");
+            return string("AEON address, viewkey or tx hash not provided");
         }
 
         string tx_hash     = remove_bad_chars(post_body["tx_hash"]);
@@ -361,7 +365,7 @@ main(int ac, const char* av[])
                 || post_body.count("txprvkey") == 0
                 || post_body.count("txhash") == 0)
             {
-                return string("xmr address, tx private key or "
+                return string("AEON address, tx private key or "
                                       "tx hash not provided");
             }
 

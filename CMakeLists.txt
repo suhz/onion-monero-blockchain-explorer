@@ -15,13 +15,13 @@ if (WIN32)
 endif()
 
 
-if (NOT MONERO_DIR)
-    set(MONERO_DIR ~/monero)
+if (NOT AEON_DIR)
+    set(AEON_DIR ~/aeon)
 endif()
 
-message(STATUS MONERO_DIR ": ${MONERO_DIR}")
+message(STATUS AEON_DIR ": ${AEON_DIR}")
 
-set(MONERO_SOURCE_DIR ${MONERO_DIR}
+set(MONERO_SOURCE_DIR ${AEON_DIR}
         CACHE PATH "Path to the root directory for Monero")
 
 # set location of monero build tree
@@ -105,6 +105,7 @@ set(LIBRARIES
         cryptonote_core
         cryptonote_protocol
         cryptonote_basic
+        multisig
         daemonizer
         cncrypto
         blocks
@@ -118,6 +119,7 @@ set(LIBRARIES
         checkpoints
         version
         epee
+        sodium
         ${Boost_LIBRARIES}
         pthread
         unbound
@@ -128,7 +130,7 @@ set(LIBRARIES
 if(APPLE)
     set(LIBRARIES ${LIBRARIES} "-framework IOKit -framework PCSC")
 else()
-    set(LIBRARIES ${LIBRARIES} atomic)
+    set(LIBRARIES ${LIBRARIES} atomic pcsclite)
 endif()
 
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT WIN32)
